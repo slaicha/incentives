@@ -1,0 +1,7 @@
+__pycache__/
+outputs/
+wandb/
+notes.txt
+READM_OG.md
+_static/
+conf/
