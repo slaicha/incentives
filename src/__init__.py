@@ -1,1 +1,1 @@
-"""pytorch-example: A Flower / PyTorch app."""
+"""adapted from pytorch-example: A Flower / PyTorch app."""

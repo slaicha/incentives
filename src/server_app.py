@@ -1,4 +1,4 @@
-"""pytorch-example: A Flower / PyTorch app."""
+"""adapted from pytorch-example: A Flower / PyTorch app."""
 
 import torch
 from pytorch_example.strategy import SamplingFedAvg
