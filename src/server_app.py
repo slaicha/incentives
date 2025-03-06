@@ -1,8 +1,8 @@
 """adapted from pytorch-example: A Flower / PyTorch app."""
 
 import torch
-from pytorch_example.strategy import SamplingFedAvg
-from pytorch_example.task import (
+from src.strategy import SamplingFedAvg
+from src.task import (
     Net,
     apply_eval_transforms,
     get_weights,
@@ -37,17 +37,6 @@ def gen_evaluate_fn(
 
     return evaluate
 
-
-# I implemented the decay in fit() in client_app
-# def on_fit_config(server_round: int):
-#     """Construct `config` that clients receive when running `fit()`"""
-#     lr = 0.1
-#     # Enable a simple form of learning rate decay
-#     if server_round > 10:
-#         lr /= 2
-#     return {"lr": lr}
-
-
 # Define metric aggregation function
 def weighted_average(metrics):
     # Multiply accuracy of each client by number of examples used
@@ -66,11 +55,6 @@ def server_fn(context: Context):
     server_device = context.run_config["server-device"]
 
     # Prepare dataset for central evaluation
-
-    # This is the exact same dataset as the one donwloaded by the clients via
-    # FlowerDatasets. However, we don't use FlowerDatasets for the server since
-    # partitioning is not needed.
-    # We make use of the "test" split only
     global_test_set = load_dataset("zalando-datasets/fashion_mnist")["test"]
 
     testloader = DataLoader(
@@ -82,14 +66,6 @@ def server_fn(context: Context):
     ndarrays = get_weights(Net()) # this is not empty
     parameters = ndarrays_to_parameters(ndarrays)
     
-    # net = Net()
-    # for param in net.parameters():
-    #     param.data.fill_(0)  # Set all parameters to zero
-
-    # ndarrays = get_weights(net)  # Now this should be all zeros
-    # parameters = ndarrays_to_parameters(ndarrays)
-    
-        
     # Define strategy
     strategy = SamplingFedAvg(
         run_config=context.run_config,
@@ -97,7 +73,6 @@ def server_fn(context: Context):
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_eval,
         initial_parameters=parameters,
-        # on_fit_config_fn=on_fit_config,
         evaluate_fn=gen_evaluate_fn(testloader, device=server_device),
         evaluate_metrics_aggregation_fn=weighted_average,
         sampling_ratio=1.0,

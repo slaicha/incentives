@@ -121,7 +121,11 @@ def constraint_diff(q):
     return np.diff(q)
 
 
-def solve_optimization(scenario, G):
+
+with open("/home/as1233/incentives/incentives/config_utility.json", "r") as f:
+    config = json.load(f)
+
+def solve_optimization(scenario, G, gamma1, gamma2):
     """
     Solve the optimization problem for the given scenario.
 
@@ -133,19 +137,18 @@ def solve_optimization(scenario, G):
         tuple: (Optimal q values as an array, optimal objective function value)
     """
     G = np.array(G)
-    with open("/home/as1233/incentives/advanced-pytorch/config_utility.json", "r") as f:
-        config = json.load(f)
+    # with open("/home/as1233/incentives/incentives/config_utility.json", "r") as f:
+    #     config = json.load(f)
+    # gamma1 = config["gamma1"]
+    # gamma2 = config["gamma2"]
 
     # set the parameters
     N = config["N"]
     # start_value = N * 10
     # step_size = 10
     # c = np.array([start_value - i * step_size for i in range(N)])
-    c = np.array(expon.rvs(scale=0.9, size=N)*100) # *0.1, 10 for 40 clients, *0.9, 100 for 10 clients
+    c = np.array(expon.rvs(scale=0.1, size=N)*10) # *0.1, 10 for 40 clients, *0.9, 100 for 10 clients
     c = np.sort(c)[::-1]
-    print("Costs: ", c)
-    gamma1 = config["gamma1"]
-    gamma2 = config["gamma2"]
     q0 = np.sort(np.random.uniform(low=0.001, high=1.0, size=N))
     a = np.ones(N)/N
     bounds_q = [(0.001, 1) for _ in range(N)]
@@ -158,6 +161,16 @@ def solve_optimization(scenario, G):
         sol = minimize(incomplete_server_utility_fn, q0, args=(gamma1, gamma2, a, G, c), bounds=bounds_q,
                        constraints={'type': 'ineq', 'fun': constraint_diff})
         # print("sol.x: ", sol.x)
+        
+    output_path = "/home/as1233/incentives/incentives/outputs/params.txt"
+    with open(output_path, "w") as f:
+        f.write("c:\n")
+        f.write(", ".join(map(str, c)) + "\n\n")
+        f.write("G:\n")
+        f.write(", ".join(map(str, G)) + "\n\n")
+        f.write("q:\n")
+        f.write(", ".join(map(str, sol.x)) + "\n\n")
+        f.write(f"server's utility: {sol.fun}\n")
 
     return sol.x, sol.fun
 

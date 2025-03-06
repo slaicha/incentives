@@ -8,9 +8,9 @@ from typing import Optional, Union
 
 import torch
 import wandb
-from pytorch_example.task import Net, create_run_dir, set_weights
+from src.task import Net, create_run_dir, set_weights
 
-from pytorch_example.utility import solve_optimization
+from src.utility import solve_optimization
 
 from flwr.common import logger, parameters_to_ndarrays, FitRes, parameters_to_ndarrays
 from flwr.common.typing import UserConfig
@@ -30,7 +30,7 @@ from flwr.common import (
     parameters_to_ndarrays,
 )
 
-PROJECT_NAME = "FLOWER-advanced-pytorch"
+PROJECT_NAME = "_"
 
 seed = 4
 random.seed(seed) 
@@ -76,10 +76,6 @@ class SamplingFedAvg(FedAvg):
         else:
             self.results[tag] = [results_dict]
         
-        # Save results to disk.
-        # Note we overwrite the same file with each call to this function.
-        # While this works, a more sophisticated approach is preferred
-        # in situations where the contents to be saved are larger.
         with open(f"{self.save_path}/results.json", "w", encoding="utf-8") as fp:
             json.dump(self.results, fp)
 
@@ -88,9 +84,6 @@ class SamplingFedAvg(FedAvg):
         if accuracy > self.best_acc_so_far:
             self.best_acc_so_far = accuracy
             logger.log(INFO, "💡 New best global model found: %f", accuracy)
-            # You could save the parameters object directly.
-            # Instead we are going to apply them to a PyTorch
-            # model and save the state dict.
             # Converts flwr.common.Parameters to ndarrays
             ndarrays = parameters_to_ndarrays(parameters)
             model = Net()
@@ -194,7 +187,7 @@ class SamplingFedAvg(FedAvg):
     def calculate_client_probs(self): # this fct will only be used in the first round to get the sampling prob
         """"Calculate client sampling probabilities"""
 
-        config_path = "/home/as1233/incentives/advanced-pytorch/config_utility.json"  
+        config_path = "/home/as1233/incentives/incentives/config_utility.json"  
         with open(config_path, "r") as f:
             config = json.load(f)
         # fix the order of the parameters
@@ -202,6 +195,7 @@ class SamplingFedAvg(FedAvg):
             config["Gn"] = []
         if "cid" not in config:
             config["cid"] = []
+
         # remove sorting G bc i don't think there really is a relationship between G and c
         # sorted_items = sorted(config["G_n_squared"].items(), key=lambda item: item[1], reverse=True)        
         items = config["G_n_squared"].items()      
@@ -211,11 +205,15 @@ class SamplingFedAvg(FedAvg):
         with open(config_path, "w") as f:
             json.dump(config, f, indent=4)
         
-        q, _ = solve_optimization(scenario=config["scenario"], G=config["Gn"])
+        q, _ = solve_optimization(scenario=config["scenario"], G=config["Gn"], gamma1=config["gamma1"], gamma2=config["gamma2"])
                         
         sampling_prob = {}
         for i in range(len(config["cid"])):
             sampling_prob[int(config["cid"][i])] = q[i]
+            # sampling_prob[int(config["cid"][i])] = 1/50
+
+        if "q" not in config:
+            config["q"] = sampling_prob
 
         return sampling_prob
 
@@ -245,7 +243,7 @@ class SamplingFedAvg(FedAvg):
             selected_clients_cids = list(client_manager.clients.keys())
             
             # Delete the paramaters from the previous run
-            config_path = "/home/as1233/incentives/advanced-pytorch/config_utility.json"  
+            config_path = "/home/as1233/incentives/incentives/config_utility.json"  
             with open(config_path, "r") as f:
                 config_utility = json.load(f)
             for key in ["G_n_squared", "Gn", "cid"]:
@@ -255,7 +253,6 @@ class SamplingFedAvg(FedAvg):
             
             return [(client_manager.clients.get(cid), FitIns(parameters, config)) for cid in selected_clients_cids]  
          
-                       
         elif server_round != 1:  
             available_clients = list(client_manager.clients.values()) # clients is dict[cid, ClientProxy]
             selected_clients = [client for client in available_clients if random.random() < self.client_probs[int(client.cid)]]

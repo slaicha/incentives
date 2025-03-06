@@ -3,7 +3,7 @@
 import torch
 import json
 import numpy as np
-from pytorch_example.task import Net, get_weights, load_data, set_weights, test, train, pretrain
+from src.task import Net, get_weights, load_data, set_weights, test, train, pretrain
 
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context, ParametersRecord, RecordSet, array_from_numpy
@@ -49,10 +49,6 @@ class FlowerClient(NumPyClient):
 
         # Apply weights from global models (the whole model is replaced)
         set_weights(self.net, parameters)
-
-        # Override weights in classification layer with those this client
-        # had at the end of the last fit() round it participated in
-        self._load_layer_weights_from_state()
         
         current_round = config["server_round"]
         
@@ -71,39 +67,12 @@ class FlowerClient(NumPyClient):
             device=self.device,
         )
 
-        # Save classification head to context's state to use in a future fit() call
-        self._save_layer_weights_to_state()
-
         return (
             get_weights(self.net),
             len(self.trainloader.dataset),
             {"train_loss": train_loss},
         )
         
-
-    def _save_layer_weights_to_state(self):
-        """Save last layer weights to state."""
-        state_dict_arrays = {}
-        for k, v in self.net.fc2.state_dict().items():
-            state_dict_arrays[k] = array_from_numpy(v.cpu().numpy())
-
-        # Add to recordset (replace if already exists)
-        self.client_state.parameters_records[self.local_layer_name] = ParametersRecord(
-            state_dict_arrays
-        )
-
-    def _load_layer_weights_from_state(self):
-        """Load last layer weights to state."""
-        if self.local_layer_name not in self.client_state.parameters_records:
-            return
-
-        state_dict = {}
-        param_records = self.client_state.parameters_records
-        for k, v in param_records[self.local_layer_name].items():
-            state_dict[k] = torch.from_numpy(v.numpy())
-
-        # apply previously saved classification head by this client
-        self.net.fc2.load_state_dict(state_dict, strict=True)
 
     def evaluate(self, parameters, config):
         """Evaluate the global model on the local validation set.
@@ -114,7 +83,7 @@ class FlowerClient(NumPyClient):
         set_weights(self.net, parameters)
         # Override weights in classification layer with those this client
         # had at the end of the last fit() round it participated in
-        self._load_layer_weights_from_state()
+        # self._load_layer_weights_from_state()
         loss, accuracy = test(self.net, self.valloader, self.device)
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
 
@@ -134,11 +103,11 @@ def client_fn(context: Context):
     # Check if pretraining has already been done for this client. All pretraining will happen in round 1
     if "pretrained" not in client_state.parameters_records:
         # print(f"Pretraining client {partition_id}...")
-        Gn_squared, train_loss = pretrain(
+        Gn_squared, _ = pretrain(
             net_pretrain, trainloader, epochs=pretrain_local_epochs, lr=0.01, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
         )
         
-        config_path = "/home/as1233/incentives/advanced-pytorch/config_utility.json"  
+        config_path = "/home/as1233/incentives/incentives/config_utility.json"  
         with open(config_path, "r") as f:
             config = json.load(f)
         

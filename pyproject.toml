@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "incentives"
+name = "pytorch-example"
 version = "1.0.0"
-description = "Code Based on "Federated Learning with PyTorch and Flower (Advanced Example)""
+description = "Federated Learning with PyTorch and Flower (Advanced Example)"
 license = "Apache-2.0"
 dependencies = [
     "flwr[simulation]>=1.15.1",
@@ -22,15 +22,15 @@ packages = ["."]
 publisher = "flwrlabs"
 
 [tool.flwr.app.components]
-serverapp = "pytorch_example.server_app:app"
-clientapp = "pytorch_example.client_app:app"
+serverapp = "src.server_app:app"
+clientapp = "src.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 50
+num-server-rounds = 1
 fraction-fit = 1.0
 fraction-evaluate = 1.0
-local-epochs = 5
-pretrain-local-epochs = 15
+local-epochs = 50
+pretrain-local-epochs = 20
 server-device = "cuda"
 use-wandb = true
 
@@ -38,10 +38,10 @@ use-wandb = true
 default = "local-sim-gpu"
 
 [tool.flwr.federations.local-sim]
-options.num-supernodes = 10
+options.num-supernodes = 50
 options.backend.client-resources.num-cpus = 5 # number of cpus u want each client to have access to. there are 80 cpu cores in this system
 options.backend.client-resources.num-gpus = 0.5 # ratio of VRAM a ClientApp has access to. there are 8 gpus in this system
 [tool.flwr.federations.local-sim-gpu]
-options.num-supernodes = 10
+options.num-supernodes = 50
 options.backend.client-resources.num-cpus = 5
 options.backend.client-resources.num-gpus = 0.5
